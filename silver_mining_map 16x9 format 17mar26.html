@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Silver World — Historical Mining Map | Trunoth</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: Georgia, 'Times New Roman', serif;
+  background: #f4f3ef;
+  color: #1a1a1a;
+  overflow: hidden;
+}
+
+#layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  grid-template-rows: 100vh;
+  height: 100vh;
+}
+
+/* ── LEFT SIDEBAR ── */
+#sidebar {
+  background: #1e1e1e;
+  color: #e0e0da;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 14px;
+  overflow-y: auto;
+  gap: 14px;
+}
+
+#sidebar h1 {
+  font-size: 1.0em;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #f0efe8;
+  border-bottom: 1px solid #3a3a3a;
+  padding-bottom: 10px;
+}
+
+#sidebar .tagline {
+  font-size: 0.72em;
+  color: #888;
+  line-height: 1.5;
+  margin-top: -8px;
+}
+
+.section-label {
+  font-size: 0.68em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #666;
+  font-family: sans-serif;
+  margin-bottom: 5px;
+}
+
+/* Stats */
+#stats-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.stat-card {
+  background: #2a2a2a;
+  border-radius: 5px;
+  padding: 7px 9px;
+}
+.stat-label { font-size: 0.65em; color: #777; font-family: sans-serif; }
+.stat-val { font-size: 1.1em; font-weight: 700; color: #f0efe8; }
+
+/* Buttons */
+.btn-group { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.rbtn {
+  font-size: 0.72em; padding: 4px 9px;
+  border-radius: 4px; border: 1px solid #3a3a3a;
+  background: #2a2a2a; color: #aaa;
+  cursor: pointer; font-family: sans-serif;
+  transition: background 0.15s, color 0.15s;
+}
+.rbtn:hover { background: #333; color: #e0e0da; }
+.rbtn.active { background: #4a4a3a; color: #f0efe8; border-color: #666; }
+
+.fbtn {
+  font-size: 0.7em; padding: 3px 8px;
+  border-radius: 4px; border: 1px solid #333;
+  background: transparent; color: #888;
+  cursor: pointer; font-family: sans-serif;
+  transition: background 0.15s;
+}
+.fbtn.active { color: #e0e0da; border-color: transparent; }
+
+/* Timeline */
+.timeline-wrap { }
+#era-display {
+  font-size: 0.78em; font-weight: 700;
+  color: #c8c0a0; font-family: sans-serif;
+  margin-bottom: 4px; min-height: 1.2em;
+}
+#tslider {
+  width: 100%; accent-color: #a0906a;
+  margin: 2px 0 3px;
+}
+.tl-labels {
+  display: flex; justify-content: space-between;
+  font-size: 0.6em; color: #555; font-family: sans-serif;
+}
+
+/* Legend */
+#legend { display: flex; flex-direction: column; gap: 5px; }
+.leg-section { font-size: 0.68em; color: #777; font-family: sans-serif; }
+.leg-section strong { color: #999; display: block; margin-bottom: 3px; }
+.leg-items { display: flex; flex-wrap: wrap; gap: 5px 10px; }
+.leg { display: flex; align-items: center; gap: 4px; font-size: 0.68em; color: #888; font-family: sans-serif; }
+.leg-dot { border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.leg-diamond { display: inline-block; transform: rotate(45deg); border-radius: 1px; flex-shrink: 0; }
+
+/* Footer link */
+#sidebar-footer {
+  margin-top: auto;
+  font-size: 0.65em;
+  color: #555;
+  line-height: 1.5;
+  border-top: 1px solid #2a2a2a;
+  padding-top: 10px;
+  font-family: sans-serif;
+}
+#sidebar-footer a { color: #a0906a; text-decoration: none; }
+
+/* ── RIGHT PANEL ── */
+#map-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#map-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #d8dbd4;
+}
+
+#map-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+}
+#map-svg:active { cursor: grabbing; }
+
+.c-base { fill: #e6e8e0; stroke: #fff; stroke-width: 0.4; }
+
+#map-footer {
+  background: #1e1e1e;
+  padding: 5px 14px;
+  font-size: 0.67em;
+  color: #555;
+  font-family: sans-serif;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+#map-footer .hint { color: #444; }
+#map-footer .sources { color: #3a3a3a; }
+
+/* Tooltip */
+#tooltip {
+  position: absolute; pointer-events: none; display: none;
+  background: #fff; border: 1px solid #ddd; border-radius: 8px;
+  padding: 11px 14px; max-width: 268px; z-index: 30;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+  font-family: sans-serif;
+}
+#tooltip .tn { font-size: 13px; font-weight: 700; color: #1a1a1a; margin-bottom: 3px; }
+#tooltip .tbadge { display: inline-block; font-size: 10px; padding: 2px 6px;
+  border-radius: 4px; margin-bottom: 5px; margin-right: 4px; }
+#tooltip .tr { display: flex; justify-content: space-between;
+  font-size: 11.5px; gap: 10px; margin-bottom: 2px; }
+#tooltip .tl { color: #888; }
+#tooltip .tv { font-weight: 600; color: #1a1a1a; text-align: right; }
+#tooltip .tnote { font-size: 11px; color: #555; margin-top: 7px;
+  border-top: 1px solid #eee; padding-top: 6px; line-height: 1.55; }
+
+.mine-dot { cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div id="layout">
+
+  <!-- ── SIDEBAR ── -->
+  <div id="sidebar">
+
+    <div>
+      <h1>The Silver World</h1>
+      <p class="tagline">Historical mining regions — 3000 BCE to present. A reference companion to <em>Trunoth</em>.</p>
+    </div>
+
+    <div>
+      <div class="section-label">Statistics</div>
+      <div id="stats-bar">
+        <div class="stat-card"><div class="stat-label">Visible mines</div><div class="stat-val" id="st-count">—</div></div>
+        <div class="stat-card"><div class="stat-label">Est. output</div><div class="stat-val" id="st-output">—</div></div>
+        <div class="stat-card"><div class="stat-label">Primary</div><div class="stat-val" id="st-primary">—</div></div>
+        <div class="stat-card"><div class="stat-label">Byproduct</div><div class="stat-val" id="st-byproduct">—</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">Region</div>
+      <div class="btn-group" id="region-buttons"></div>
+    </div>
+
+    <div>
+      <div class="section-label">Era</div>
+      <div class="btn-group" id="era-filter"></div>
+    </div>
+
+    <div>
+      <div class="section-label">Type</div>
+      <div class="btn-group" id="type-filter"></div>
+    </div>
+
+    <div class="timeline-wrap">
+      <div class="section-label">Timeline</div>
+      <div id="era-display">All eras</div>
+      <input type="range" id="tslider" min="0" max="10" value="10" step="1">
+      <div class="tl-labels">
+        <span>3000 BCE</span><span>1 CE</span><span>1000</span><span>1600</span><span>1900</span><span>now</span>
+      </div>
+    </div>
+
+    <div id="legend">
+      <div class="section-label">Legend</div>
+      <div class="leg-section">
+        <strong>Estimated total output</strong>
+        <div class="leg-items">
+          <span class="leg"><span class="leg-dot" style="width:6px;height:6px;background:#777;"></span> &lt;5k t</span>
+          <span class="leg"><span class="leg-dot" style="width:9px;height:9px;background:#777;"></span> 5–50k t</span>
+          <span class="leg"><span class="leg-dot" style="width:13px;height:13px;background:#777;"></span> 50–200k t</span>
+          <span class="leg"><span class="leg-dot" style="width:18px;height:18px;background:#777;"></span> &gt;200k t</span>
+        </div>
+      </div>
+      <div class="leg-section">
+        <strong>Era (circle = primary)</strong>
+        <div class="leg-items">
+          <span class="leg"><span class="leg-dot" style="width:9px;height:9px;background:#E24B4A;"></span> Ancient</span>
+          <span class="leg"><span class="leg-dot" style="width:9px;height:9px;background:#BA7517;"></span> Medieval</span>
+          <span class="leg"><span class="leg-dot" style="width:9px;height:9px;background:#EF9F27;"></span> Colonial</span>
+          <span class="leg"><span class="leg-dot" style="width:9px;height:9px;background:#1D9E75;"></span> Industrial</span>
+          <span class="leg"><span class="leg-dot" style="width:9px;height:9px;background:#7F77DD;"></span> Modern</span>
+        </div>
+      </div>
+      <div class="leg-section">
+        <strong>Byproduct (diamond shape)</strong>
+        <div class="leg-items">
+          <span class="leg"><span class="leg-diamond" style="width:9px;height:9px;background:#854F0B;"></span> Cu / Pb / Zn / Au byproduct</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="sidebar-footer">
+      Sources: Silver Institute / Metals Focus <em>World Silver Survey 2025</em>; USGS <em>Mineral Commodity Summaries 2025</em>; company disclosures; Bakewell (1984); TePaske (2010); Sverdrup et al. (2014). Output figures are historical estimates.<br><br>
+      <a href="#">trunoth.substack.com</a>
+    </div>
+
+  </div>
+
+  <!-- ── MAP PANEL ── -->
+  <div id="map-panel">
+    <div id="map-container">
+      <svg id="map-svg" viewBox="0 0 960 500" preserveAspectRatio="xMidYMid meet"></svg>
+      <div id="tooltip"></div>
+    </div>
+    <div id="map-footer">
+      <span class="hint">Scroll / pinch to zoom &nbsp;·&nbsp; Drag to pan &nbsp;·&nbsp; Click any dot for details</span>
+      <span class="sources">Topology: Natural Earth via world-atlas &nbsp;·&nbsp; All figures are historical estimates</span>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+const CENTURY_RANGES=[[-3000,-2000],[-2000,-1000],[-1000,0],[0,500],[500,1000],[1000,1200],[1200,1400],[1400,1600],[1600,1800],[1800,1900],[1900,2100]];
+const CENTURY_LABELS=['3000–2000 BCE','2000–1000 BCE','1000 BCE–1 CE','1–500 CE','500–1000 CE','1000–1200','1200–1400','1400–1600','1600–1800','1800–1900','1900–present'];
+const ERA_COLORS={ancient:'#E24B4A',medieval:'#BA7517',colonial:'#EF9F27',industrial:'#1D9E75',modern:'#7F77DD'};
+const ERA_LABELS_MAP={ancient:'Ancient (pre-500 CE)',medieval:'Medieval (500–1500)',colonial:'Colonial (1500–1800)',industrial:'Industrial (1800–1970)',modern:'Modern (1970–now)'};
+const TYPE_COLORS={primary:'#185FA5',byproduct:'#854F0B'};
+
+const MINES=[
+  {id:'anatolia',name:'Anatolia — Taurus Mts.',country:'Turkey',lat:37.5,lon:34.5,era:'ancient',type:'primary',active:[-3000,500],tonnes:4000,peakPeriod:'3000–500 BCE',region:'Europe & Med',note:'Oldest known silver mining region. Hittite and Assyrian sources. Cradle of silver metallurgy. Earliest recorded silver trade documents reference Anatolian sources.'},
+  {id:'rio-tinto',name:'Río Tinto',country:'Spain',lat:37.7,lon:-6.6,era:'ancient',type:'primary',active:[-3000,1900],tonnes:9000,peakPeriod:'3000 BCE–500 CE (peak)',region:'Europe & Med',note:'Operated by Phoenicians, Carthaginians, Romans. Romans employed ~40,000 slaves at peak. One of the longest continuously mined sites on earth.'},
+  {id:'laurion',name:'Laurion',country:'Greece',lat:37.7,lon:24.05,era:'ancient',type:'primary',active:[-600,300],tonnes:3500,peakPeriod:'600 BCE–300 CE',region:'Europe & Med',note:'Financed the Athenian navy at Salamis 480 BCE. ~3,500 t over ~1,000 years using slave labor in narrow hand-cut galleries.'},
+  {id:'sardinia',name:'Sardinia — Iglesiente',country:'Italy',lat:39.3,lon:8.5,era:'ancient',type:'primary',active:[-2000,1900],tonnes:2000,peakPeriod:'1500 BCE–1900 CE',region:'Europe & Med',note:'Phoenician and Carthaginian source. Later mined by Romans and Aragonese. Revived in the 19th century industrial era.'},
+  {id:'yunnan',name:'Yunnan & Hunan',country:'China',lat:25.0,lon:102.7,era:'ancient',type:'primary',active:[-200,2100],tonnes:18000,peakPeriod:'200 BCE–present',region:'Asia-Pacific',note:'China has mined silver for over 2,000 years. Today the second-largest silver producer globally, primarily as byproduct of lead-zinc-copper mining.'},
+  {id:'erzgebirge',name:'Erzgebirge — Saxony / Bohemia',country:'Germany',lat:50.6,lon:13.0,era:'medieval',type:'primary',active:[968,1900],tonnes:7000,peakPeriod:'968–1600 CE',region:'Europe & Med',note:'Primary silver source for medieval Europe. The Joachimsthaler coin minted here is the etymological root of "dollar" and "thaler."'},
+  {id:'schwaz',name:'Schwaz, Tyrol',country:'Austria',lat:47.35,lon:11.7,era:'medieval',type:'primary',active:[1400,1600],tonnes:3000,peakPeriod:'1470–1560',region:'Europe & Med',note:'Largest silver mine in 15th-century Europe. Supplied the Fugger banking family and financed Habsburg expansion. Peak ~20 t/year in the 1520s.'},
+  {id:'sala',name:'Sala Silvergruva',country:'Sweden',lat:59.9,lon:16.6,era:'medieval',type:'primary',active:[1510,1962],tonnes:1000,peakPeriod:'1510–1800',region:'Europe & Med',note:"Sweden's principal silver mine for 400 years. Operated under Swedish crown from 1510. Closed 1962; now a museum."},
+  {id:'cerro-rico',name:'Cerro Rico, Potosí',country:'Bolivia',lat:-19.6,lon:-65.75,era:'colonial',type:'primary',active:[1545,2100],tonnes:60000,peakPeriod:'1545–1800 (peak)',region:'Latin America',note:'The single greatest silver deposit in history. ~60,000+ t extracted over 5 centuries. Powered the Spanish empire; mita forced labor killed hundreds of thousands. Still being mined today.'},
+  {id:'zacatecas',name:'Zacatecas & Guanajuato',country:'Mexico',lat:22.77,lon:-102.57,era:'colonial',type:'primary',active:[1546,2100],tonnes:45000,peakPeriod:'1546–1900 (peak)',region:'Latin America',note:"Mexico's colonial silver belt. Supplied roughly 1/3 of all silver mined globally 1500–1900. Mercury amalgamation process scaled here first."},
+  {id:'peru-central',name:'Cerro de Pasco & Junín',country:'Peru',lat:-10.68,lon:-76.26,era:'colonial',type:'primary',active:[1630,2100],tonnes:35000,peakPeriod:'1630–present',region:'Latin America',note:"Peru holds the world's largest confirmed reserves today (~140,000 t). Colonial primary source; now primarily polymetallic byproduct."},
+  {id:'japan-iwami',name:'Iwami Ginzan & Ikuno',country:'Japan',lat:35.1,lon:132.4,era:'colonial',type:'primary',active:[1526,1943],tonnes:2400,peakPeriod:'1526–1650',region:'Asia-Pacific',note:'Largest silver mine in Asia in the 16th century. Output fed the Chinese trade circuit via the Manila galleon route. UNESCO World Heritage site.'},
+  {id:'san-cristobal',name:'San Cristóbal, Potosí dept.',country:'Bolivia',lat:-21.4,lon:-66.7,era:'colonial',type:'byproduct',byproductOf:'Zn/Pb',active:[1545,2100],tonnes:8000,peakPeriod:'Modern — one of world\'s largest Zn-Pb-Ag mines',region:'Latin America',note:'Same geological province as Cerro Rico. Silver byproduct of large-scale zinc-lead mining in the Potosí department.'},
+  {id:'kongsberg',name:'Kongsberg',country:'Norway',lat:59.65,lon:9.65,era:'industrial',type:'primary',active:[1623,1957],tonnes:1350,peakPeriod:'1623–1957',region:'Europe & Med',note:"Europe's largest post-medieval primary silver mine. 334 years under Danish/Norwegian crown. Famous for native silver crystals of extraordinary purity."},
+  {id:'cobalt-ontario',name:'Cobalt, Ontario',country:'Canada',lat:47.4,lon:-79.68,era:'industrial',type:'primary',active:[1903,1950],tonnes:9500,peakPeriod:'1903–1940',region:'North America',note:'Discovery in 1903 produced some of the highest-grade native silver veins ever found. At peak, Cobalt rivaled Comstock output and briefly made Canada the world\'s leading silver producer.'},
+  {id:'nevada-comstock',name:'Comstock Lode, Nevada',country:'USA',lat:39.3,lon:-119.65,era:'industrial',type:'primary',active:[1859,1898],tonnes:9000,peakPeriod:'1859–1898',region:'North America',note:'~9,000 t produced. Financed the Union in the Civil War. Its depletion directly fueled the Crime of 1873 demonetization debate — a central event in the Trunoth series.'},
+  {id:'silver-valley',name:"Silver Valley (Coeur d'Alene), Idaho",country:'USA',lat:47.52,lon:-116.1,era:'industrial',type:'primary',active:[1884,2100],tonnes:15000,peakPeriod:'1884–present',region:'North America',note:"Sunshine Mine produced 367 Moz — the largest single silver mine output in U.S. history. Lucky Friday and Galena still operating. Bunker Hill (closed 1981) restarting 2026."},
+  {id:'broken-hill',name:'Broken Hill',country:'Australia',lat:-31.95,lon:141.47,era:'industrial',type:'primary',active:[1883,2100],tonnes:50000,peakPeriod:'1883–present',region:'Asia-Pacific',note:'One of the largest Ag-Pb-Zn deposits ever found. Gave birth to BHP. Founded the flotation metallurgy process used worldwide. Still operating after 140 years.'},
+  {id:'copiaro',name:'Copiapó & Atacama',country:'Chile',lat:-27.4,lon:-70.3,era:'industrial',type:'primary',active:[1832,1920],tonnes:6000,peakPeriod:'1832–1900',region:'Latin America',note:"Chile's 1832 silver boom. Primarily exhausted by 1900; today Chilean silver is byproduct of copper."},
+  {id:'russia-urals',name:'Urals & Magadan',country:'Russia',lat:59.0,lon:56.0,era:'industrial',type:'primary',active:[1700,2100],tonnes:14000,peakPeriod:'1700–present',region:'Europe & Med',note:'Russia holds ~92,000 t confirmed reserves (3rd globally). Ural polymetallic deposits mined since Peter the Great. Magadan (Far East) is a major modern gold-silver source.'},
+  {id:'mount-isa',name:'Mount Isa, Queensland',country:'Australia',lat:-20.72,lon:139.5,era:'industrial',type:'byproduct',byproductOf:'Cu/Zn/Pb',active:[1924,2100],tonnes:11000,peakPeriod:'1924–present',region:'Asia-Pacific',note:'Cu, Pb, Zn, and Ag all mined simultaneously from the same district. Silver is a significant byproduct of Pb-Zn processing.'},
+  {id:'witwatersrand',name:'Witwatersrand / Bushveld',country:'South Africa',lat:-26.2,lon:27.0,era:'industrial',type:'byproduct',byproductOf:'Au/Pt',active:[1886,2100],tonnes:8000,peakPeriod:'1886–present',region:'Africa',note:"Africa's primary silver output is byproduct of gold and platinum mining. No significant primary silver deposits found on the continent — Africa's ancient stable cratons favour gold over silver."},
+  {id:'zambia-copper',name:'Zambia Copperbelt',country:'Zambia',lat:-13.0,lon:28.0,era:'industrial',type:'byproduct',byproductOf:'Copper',active:[1930,2100],tonnes:5000,peakPeriod:'1930–present',region:'Africa',note:"Africa's most significant silver source by volume — as unavoidable byproduct of copper mining. Explains the continent's near-absence from primary silver maps."},
+  {id:'boliden',name:'Boliden district',country:'Sweden',lat:64.9,lon:20.4,era:'industrial',type:'byproduct',byproductOf:'Cu/Zn/Au',active:[1924,2100],tonnes:4000,peakPeriod:'1924–present',region:'Europe & Med',note:'Boliden AB operates major polymetallic mines across northern Sweden and Finland. Silver is a significant byproduct. The Aitik copper mine is Sweden\'s largest.'},
+  {id:'bingham',name:'Bingham Canyon (Kennecott), Utah',country:'USA',lat:40.52,lon:-112.15,era:'industrial',type:'byproduct',byproductOf:'Copper',active:[1906,2100],tonnes:8000,peakPeriod:'1906–present',region:'North America',note:'One of the largest open-pit copper mines on earth — visible from space. Silver is a significant byproduct of copper smelting. Over 100 years of continuous production.'},
+  {id:'sudbury',name:'Sudbury Basin, Ontario',country:'Canada',lat:46.5,lon:-81.0,era:'industrial',type:'byproduct',byproductOf:'Ni/Cu',active:[1886,2100],tonnes:5000,peakPeriod:'1886–present',region:'North America',note:"Sudbury's Ni-Cu ores carry silver and platinum-group metals as byproducts. Likely an ancient meteor impact structure. Vale and Glencore operations."},
+  {id:'mexico-modern',name:'Sinaloa, Sonora & Chihuahua',country:'Mexico',lat:25.5,lon:-107.4,era:'modern',type:'primary',active:[1970,2100],tonnes:28000,peakPeriod:'1970–present',region:'Latin America',note:"Modern Mexico is the world's largest silver producer (~185 Moz/yr). Major mines: Peñasquito (Newmont), Juanicipio (MAG/Fresnillo), Tayoltita."},
+  {id:'greens-creek',name:'Greens Creek, Alaska',country:'USA',lat:57.4,lon:-134.6,era:'modern',type:'primary',active:[1989,2100],tonnes:7000,peakPeriod:'1989–present',region:'North America',note:'Hecla Mining flagship. ~9 Moz/yr. One of the highest-grade silver mines in North America. Located on Admiralty Island, SE Alaska. ~12 years of reserves; active exploration.'},
+  {id:'keno-hill',name:'Keno Hill, Yukon',country:'Canada',lat:63.9,lon:-135.3,era:'modern',type:'primary',active:[1919,2100],tonnes:3500,peakPeriod:'1919–1989 & 2022–present',region:'North America',note:'Historic high-grade silver district in remote central Yukon. Hecla acquired and restarted 2022. Average grade ~24 oz/t — among the highest-grade silver mines in the world.'},
+  {id:'cannington',name:'Cannington, Queensland',country:'Australia',lat:-22.8,lon:140.77,era:'modern',type:'primary',active:[1997,2100],tonnes:9000,peakPeriod:'1997–present',region:'Asia-Pacific',note:'Among the highest-grade operating silver mines globally. BHP asset. Discovered 1990 in remote outback Queensland; opened 1997.'},
+  {id:'antamina',name:'Antamina, Peru',country:'Peru',lat:-9.5,lon:-77.0,era:'modern',type:'byproduct',byproductOf:'Cu/Zn',active:[2001,2100],tonnes:8000,peakPeriod:'2001–present',region:'Latin America',note:'BHP/Glencore/Teck. One of the world\'s largest Cu-Zn producers. ~20 years reserve life. Major silver byproduct.'},
+  {id:'chile-copper',name:'Atacama copper belt',country:'Chile',lat:-24.0,lon:-69.5,era:'modern',type:'byproduct',byproductOf:'Copper',active:[1900,2100],tonnes:12000,peakPeriod:'1900–present',region:'Latin America',note:'Codelco, BHP Escondida, Glencore Collahuasi produce silver as unavoidable byproduct. ~1–5 g Ag per tonne of ore processed at scale.'},
+  {id:'red-dog',name:'Red Dog, Alaska',country:'USA',lat:68.07,lon:-162.87,era:'modern',type:'byproduct',byproductOf:'Zn/Pb',active:[1989,2100],tonnes:4500,peakPeriod:'1989–present',region:'North America',note:"World's largest zinc mine by output. Significant silver byproduct. Teck Resources; remote northwest Alaska above the Arctic Circle."},
+  {id:'poland-kghm',name:'KGHM Polska Miedź',country:'Poland',lat:51.6,lon:16.1,era:'modern',type:'byproduct',byproductOf:'Copper',active:[1959,2100],tonnes:6000,peakPeriod:'1959–present',region:'Europe & Med',note:'One of the largest silver producers in the world — almost entirely as byproduct of Polish copper mining. Silver content of Polish ore is unusually high (~100–130 g/t Ag).'},
+  {id:'kazakh-byp',name:'Kazakhstan — polymetallic belt',country:'Kazakhstan',lat:49.5,lon:82.0,era:'modern',type:'byproduct',byproductOf:'Cu/Zn',active:[1950,2100],tonnes:7000,peakPeriod:'1950–present',region:'Asia-Pacific',note:'Kazakhmys and others produce silver as byproduct. Third-largest silver reserves globally. Substantial undeveloped resources remain.'},
+  {id:'grasberg',name:'Grasberg, Papua',country:'Indonesia',lat:-4.05,lon:137.1,era:'modern',type:'byproduct',byproductOf:'Cu/Au',active:[1988,2100],tonnes:5000,peakPeriod:'1988–present',region:'Asia-Pacific',note:"Freeport-McMoRan. One of the world's largest Cu-Au mines. Silver significant byproduct. Located in remote Papua highlands."},
+  {id:'penasquito',name:'Peñasquito (Zn/Pb/Au/Ag)',country:'Mexico',lat:24.6,lon:-101.6,era:'modern',type:'byproduct',byproductOf:'Zn/Au',active:[2010,2100],tonnes:5000,peakPeriod:'2010–present',region:'Latin America',note:"Newmont. Primarily a gold-zinc-lead mine with massive silver byproduct — one of the top 5 silver-producing mines globally."},
+  {id:'morocco-zgounder',name:'Zgounder, Morocco',country:'Morocco',lat:31.1,lon:-7.9,era:'modern',type:'primary',active:[2010,2100],tonnes:2000,peakPeriod:'2010–present',region:'Africa',note:"Aya Gold & Silver's Zgounder is the largest silver mine in Africa and one of very few primary silver operations on the continent. Expansion to nameplate capacity underway 2025."},
+  {id:'argentina',name:'Pirquitas & Navidad, Argentina',country:'Argentina',lat:-22.7,lon:-66.5,era:'modern',type:'primary',active:[2009,2100],tonnes:3000,peakPeriod:'2009–present',region:'Latin America',note:'Pirquitas (First Majestic) is a primary Ag-Sn deposit. Navidad in Patagonia is one of the largest undeveloped silver deposits in the world.'},
+  {id:'philippines',name:'Philippines — Didipio',country:'Philippines',lat:16.3,lon:121.0,era:'modern',type:'byproduct',byproductOf:'Cu/Au',active:[2013,2100],tonnes:2000,peakPeriod:'2013–present',region:'Asia-Pacific',note:'Philippine Cu-Au porphyry deposits produce silver as byproduct. OceanaGold\'s Didipio is the largest operation.'},
+  {id:'indochina',name:'Indochina Pb-Zn-Ag belt',country:'Vietnam',lat:22.5,lon:104.0,era:'modern',type:'byproduct',byproductOf:'Pb/Zn',active:[1950,2100],tonnes:3000,peakPeriod:'1950–present',region:'Asia-Pacific',note:'Vietnam, Laos, and southern China host a substantial Pb-Zn-Ag belt. Silver recovered as byproduct; output growing with base metal demand.'},
+];
+
+const REGIONS=['All','Latin America','North America','Europe & Med','Asia-Pacific','Africa'];
+const REGION_VIEWS={
+  'All':{scale:145,tx:480,ty:250},
+  'Latin America':{scale:420,tx:600,ty:160},
+  'North America':{scale:350,tx:540,ty:210},
+  'Europe & Med':{scale:550,tx:440,ty:230},
+  'Asia-Pacific':{scale:310,tx:360,ty:240},
+  'Africa':{scale:420,tx:430,ty:200},
+};
+
+let activeEras=new Set(Object.keys(ERA_LABELS_MAP));
+let activeTypes=new Set(['primary','byproduct']);
+let currentRegion='All';
+let currentCentury=10;
+
+const mapContainer=document.getElementById('map-container');
+const svgEl=document.getElementById('map-svg');
+const W=960,H=500;
+
+function makeProj(v){
+  return d3.geoNaturalEarth1().scale(v.scale).translate([v.tx,v.ty]);
+}
+let currentProj=makeProj(REGION_VIEWS['All']);
+
+const svg=d3.select(svgEl);
+const g=svg.append('g');
+const zoom=d3.zoom().scaleExtent([0.7,16]).on('zoom',e=>g.attr('transform',e.transform));
+svg.call(zoom);
+
+const tt=document.getElementById('tooltip');
+
+function showTT(event,d){
+  const typeBg=d.type==='byproduct'?'#FAEEDA':'#E6F1FB';
+  const typeTx=d.type==='byproduct'?'#412402':'#042C53';
+  const byp=d.byproductOf?' of '+d.byproductOf:'';
+  tt.innerHTML=`<div class="tn">${d.name}</div>
+    <span class="tbadge" style="background:${typeBg};color:${typeTx}">${d.type==='byproduct'?'Byproduct'+byp:'Primary silver'}</span>
+    <span class="tbadge" style="background:${ERA_COLORS[d.era]}22;color:${ERA_COLORS[d.era]}">${ERA_LABELS_MAP[d.era]}</span>
+    <div class="tr" style="margin-top:5px"><span class="tl">Country</span><span class="tv">${d.country}</span></div>
+    <div class="tr"><span class="tl">Active period</span><span class="tv">${d.active[0]<0?Math.abs(d.active[0])+' BCE':d.active[0]}–${d.active[1]>2024?'present':d.active[1]}</span></div>
+    <div class="tr"><span class="tl">Peak period</span><span class="tv">${d.peakPeriod}</span></div>
+    <div class="tr"><span class="tl">Est. total output</span><span class="tv">~${d.tonnes.toLocaleString()} t</span></div>
+    <div class="tnote">${d.note}</div>`;
+  tt.style.display='block';
+  const r=mapContainer.getBoundingClientRect();
+  let x=event.clientX-r.left+14,y=event.clientY-r.top-12;
+  if(x+278>r.width)x=event.clientX-r.left-284;
+  if(y+330>r.height)y=Math.max(4,event.clientY-r.top-340);
+  tt.style.left=x+'px';tt.style.top=y+'px';
+}
+function hideTT(){tt.style.display='none';}
+
+function dotR(t){if(t<5000)return 5;if(t<50000)return 9;if(t<200000)return 13;return 18;}
+function mineActive(m,ci){if(ci===10)return true;const[from,to]=CENTURY_RANGES[ci];return m.active[0]<to&&m.active[1]>from;}
+function dotColor(m){return m.type==='byproduct'?TYPE_COLORS.byproduct:ERA_COLORS[m.era];}
+
+function visibleMines(){
+  return MINES.filter(m=>
+    activeEras.has(m.era)&&activeTypes.has(m.type)&&mineActive(m,currentCentury)&&
+    (currentRegion==='All'||m.region===currentRegion));
+}
+
+function updateStats(){
+  const vm=visibleMines();
+  const total=vm.reduce((s,m)=>s+m.tonnes,0);
+  document.getElementById('st-count').textContent=vm.length;
+  document.getElementById('st-output').textContent=total>=1000?(total/1000).toFixed(0)+'k t':total+'t';
+  document.getElementById('st-primary').textContent=vm.filter(m=>m.type==='primary').length;
+  document.getElementById('st-byproduct').textContent=vm.filter(m=>m.type==='byproduct').length;
+}
+
+function renderDots(){
+  g.selectAll('.mine-dot').remove();
+  visibleMines().forEach(m=>{
+    const[px,py]=currentProj([m.lon,m.lat]);
+    const r=dotR(m.tonnes),col=dotColor(m);
+    const attach=el=>el
+      .on('mousemove',(e,d)=>showTT(e,d))
+      .on('mouseleave',hideTT)
+      .on('click',(e,d)=>showTT(e,d));
+    if(m.type==='byproduct'){
+      const s=r*1.35;
+      attach(g.append('path').datum(m).attr('class','mine-dot')
+        .attr('d',`M${px},${py-s} L${px+s},${py} L${px},${py+s} L${px-s},${py} Z`)
+        .attr('fill',col).attr('fill-opacity',0.85).attr('stroke','#fff').attr('stroke-width',0.8));
+    } else {
+      attach(g.append('circle').datum(m).attr('class','mine-dot')
+        .attr('cx',px).attr('cy',py).attr('r',r)
+        .attr('fill',col).attr('fill-opacity',0.85).attr('stroke','#fff').attr('stroke-width',0.8));
+    }
+  });
+  updateStats();
+}
+
+function applyView(region,animate){
+  currentRegion=region;
+  currentProj=makeProj(REGION_VIEWS[region]);
+  const np=d3.geoPath(currentProj);
+  const sel=g.selectAll('.c-base');
+  if(animate)sel.transition().duration(600).attr('d',np);
+  else sel.attr('d',np);
+  svg.call(zoom.transform,d3.zoomIdentity);
+  renderDots();
+  document.querySelectorAll('.rbtn').forEach(b=>b.classList.toggle('active',b.dataset.r===region));
+}
+
+d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(world=>{
+  const path0=d3.geoPath(currentProj);
+  g.selectAll('.c-base')
+    .data(topojson.feature(world,world.objects.countries).features)
+    .join('path').attr('class','c-base').attr('d',path0);
+  renderDots();
+});
+
+// Region buttons
+REGIONS.forEach(r=>{
+  const b=document.createElement('button');
+  b.className='rbtn';b.textContent=r;b.dataset.r=r;
+  if(r==='All')b.classList.add('active');
+  b.onclick=()=>applyView(r,true);
+  document.getElementById('region-buttons').appendChild(b);
+});
+
+// Era filter
+Object.entries(ERA_LABELS_MAP).forEach(([era,label])=>{
+  const b=document.createElement('button');
+  b.className='fbtn active';b.textContent=label.split(' ')[0];
+  b.title=label;
+  b.style.borderLeft=`3px solid ${ERA_COLORS[era]}`;
+  b.style.background=ERA_COLORS[era]+'20';
+  b.onclick=()=>{
+    if(activeEras.has(era)){activeEras.delete(era);b.classList.remove('active');b.style.background='transparent';}
+    else{activeEras.add(era);b.classList.add('active');b.style.background=ERA_COLORS[era]+'20';}
+    renderDots();
+  };
+  document.getElementById('era-filter').appendChild(b);
+});
+
+// Type filter
+[['primary','Primary silver','#185FA5'],['byproduct','Byproduct','#854F0B']].forEach(([type,label,col])=>{
+  const b=document.createElement('button');
+  b.className='fbtn active';b.textContent=label;
+  b.style.borderLeft=`3px solid ${col}`;b.style.background=col+'20';
+  b.onclick=()=>{
+    if(activeTypes.has(type)){activeTypes.delete(type);b.classList.remove('active');b.style.background='transparent';}
+    else{activeTypes.add(type);b.classList.add('active');b.style.background=col+'20';}
+    renderDots();
+  };
+  document.getElementById('type-filter').appendChild(b);
+});
+
+// Timeline
+document.getElementById('tslider').addEventListener('input',function(){
+  currentCentury=parseInt(this.value);
+  document.getElementById('era-display').textContent=currentCentury===10?'All eras':CENTURY_LABELS[currentCentury];
+  renderDots();
+});
+</script>
+</body>
+</html>
